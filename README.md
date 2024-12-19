@@ -82,6 +82,55 @@ source .env && \
   forge script script/DeployEverlongStrategy.s.sol --rpc-url 0.0.0.0:8545 --broadcast
 ```
 
+#### Options
+
+##### `AS_BASE=<true>`
+
+Specifies whether to use hyperdrive's base token or vault shares token when
+transacting with hyperdrive.
+
+| :warning: WARNING                                                  |
+| :----------------------------------------------------------------- |
+| When `IS_WRAPPED` is set, `AS_BASE` must be false (or left empty). |
+
+##### `IS_WRAPPED=<true>`
+
+Wrap the token used to transact with hyperdrive. If the hyperdrive vault shares
+token is a rebasing token, `IS_WRAPPED` must be set to true since Yearn vaults
+explicitly do not support rebasing tokens.
+
+| :exclamation: IMPORTANT                                                 |
+| :---------------------------------------------------------------------- |
+| The address for the wrapped asset must be set via the `ASSET` parameter |
+
+| :exclamation: IMPORTANT                                                                                        |
+| :------------------------------------------------------------------------------------------------------------- |
+| Only rebasing tokens whos "share" token quantities equal the wrapped token quantities can be used (EX: StETH). |
+
+##### `ASSET=<address>`
+
+Set the address for the strategy asset. This should only be set when
+`IS_WRAPPED=true`.
+
+When `IS_WRAPPED=false`, the strategy asset is the hyperdrive's base token or
+vault shares token depending on the value of `AS_BASE`.
+
+##### `PROFIT_MAX_UNLOCK=<seconds>`
+
+Period in seconds to unlock profit over for the strategy.
+
+If deposits/redemptions to the strategy are limited to approved vaults, this
+can be set to zero for faster yield accrual by the vaults.
+
+If deposits/redemptions to the strategy are not permissioned, this should be set
+to at least the yield accrual interval of hyperdrive (typically 1 day).
+
+##### `KEEPER_CONTRACT_NAME=<string>`
+
+Name of the keeper contract to use for tending and reporting.
+
+By default, this is the most recently deployed keeper contract on the chain.
+
 ### Deploy a `Vault`
 
 ```sh
