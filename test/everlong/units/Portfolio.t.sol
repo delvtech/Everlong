@@ -121,4 +121,15 @@ contract TestPortfolio is EverlongTest {
             "position count should be 0 after opening and closing a long for the full bond amount"
         );
     }
+
+    /// @dev Validates that `InsufficientBonds` error is thrown when trying
+    ///      to decrease a position by more than its `bondAmount`.
+    function test_handleClosePosition_insufficient_bonds_failure() external {
+        // Create a position with a single bond in it.
+        portfolio.handleOpenPosition(1, 1);
+
+        // Attempt to close 2 bonds from the position. This should revert.
+        vm.expectRevert(EverlongPortfolioLibrary.InsufficientBonds.selector);
+        portfolio.handleClosePosition(2);
+    }
 }

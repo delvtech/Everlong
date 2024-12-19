@@ -26,6 +26,10 @@ library EverlongPortfolioLibrary {
     /// @notice Thrown on attempting to add a position to a full queue.
     error QueueFull();
 
+    /// @notice Thrown when attempting to decrease a position by more than it
+    ///         has.
+    error InsufficientBonds();
+
     /// @dev The state of the portfolio which contains a double-ended queue
     ///      of {IEverlongStrategy.EverlongPosition} along with the portfolio's average
     ///      maturity, vault share price, and total bond count.
@@ -211,8 +215,13 @@ library EverlongPortfolioLibrary {
         // Ensure there are items in the queue.
         if (frontIndex == self._end) revert QueueEmpty();
 
+        // Revert if trying to decrease by an amount greater than what is
+        // present.
+        if (_amount > self._q[frontIndex].bondAmount) {
+            revert InsufficientBonds();
+        }
         // Remove the position if _amount equals the position's bondAmount.
-        if (_amount >= self._q[frontIndex].bondAmount) {
+        else if (_amount == self._q[frontIndex].bondAmount) {
             value = _removePosition(self);
         }
         // Reduce the position's bondAmount by `_amount`.
