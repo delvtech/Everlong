@@ -14,6 +14,7 @@ import { DebtAllocator } from "vault-periphery/debtAllocators/DebtAllocator.sol"
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { Roles } from "yearn-vaults-v3/interfaces/Roles.sol";
 import { IEverlongStrategy } from "./interfaces/IEverlongStrategy.sol";
+import { IEverlongStrategyKeeper } from "./interfaces/IEverlongStrategyKeeper.sol";
 import { IRoleManager } from "./interfaces/IRoleManager.sol";
 import { EVERLONG_STRATEGY_KEEPER_KIND, EVERLONG_VERSION, ONE, MAX_BPS } from "./libraries/Constants.sol";
 import { EverlongPortfolioLibrary } from "./libraries/EverlongPortfolio.sol";
@@ -115,9 +116,7 @@ contract EverlongStrategyKeeper is Ownable {
                 vaultCalldataOrReason
             );
             if (!success) {
-                revert(
-                    string.concat("vault process_report failed: ", string(err))
-                );
+                revert IEverlongStrategyKeeper.VaultReportFailed(err);
             }
         }
     }
@@ -150,7 +149,7 @@ contract EverlongStrategyKeeper is Ownable {
                 strategyCalldataOrReason
             );
             if (!success) {
-                revert(string.concat("strategy report failed: ", string(err)));
+                revert IEverlongStrategyKeeper.StrategyReportFailed(err);
             }
         }
     }
@@ -178,7 +177,7 @@ contract EverlongStrategyKeeper is Ownable {
             IEverlongStrategy(_strategy).setTendConfig(_config);
             (bool success, bytes memory err) = _strategy.call(calldataOrReason);
             if (!success) {
-                revert(string.concat("strategy tend failed: ", string(err)));
+                revert IEverlongStrategyKeeper.TendFailed(err);
             }
         }
     }
@@ -209,9 +208,7 @@ contract EverlongStrategyKeeper is Ownable {
                 calldataOrReason
             );
             if (!success) {
-                revert(
-                    string.concat("vault update debt failed: ", string(err))
-                );
+                revert IEverlongStrategyKeeper.UpdateDebtFailed(err);
             }
         }
     }

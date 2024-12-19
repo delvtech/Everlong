@@ -179,6 +179,18 @@ interface IEverlongStrategyKeeper {
     /// @notice The owner is not a valid owner account. (eg. `address(0)`)
     error OwnableInvalidOwner(address owner);
 
+    /// @notice Thrown when a strategy report reverts.
+    error StrategyReportFailed(bytes data);
+
+    /// @notice Thrown when `tend` reverts.
+    error TendFailed(bytes data);
+
+    /// @notice Thrown when `update_debt` reverts.
+    error UpdateDebtFailed(bytes data);
+
+    /// @notice Thrown when a vault report reverts.
+    error VaultReportFailed(bytes data);
+
     // ╭───────────────────────────────────────────────────────────────────────╮
     // │                                Events                                 │
     // ╰───────────────────────────────────────────────────────────────────────╯
