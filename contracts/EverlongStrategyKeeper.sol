@@ -103,10 +103,7 @@ contract EverlongStrategyKeeper is Ownable {
         (
             bool shouldReportVault,
             bytes memory vaultCalldataOrReason
-        ) = CommonReportTrigger(trigger).defaultVaultReportTrigger(
-                _vault,
-                _strategy
-            );
+        ) = CommonReportTrigger(trigger).vaultReportTrigger(_vault, _strategy);
 
         // If process_report should be called, call it with the recommended
         // parameters.
@@ -139,9 +136,7 @@ contract EverlongStrategyKeeper is Ownable {
         (
             bool shouldReportStrategy,
             bytes memory strategyCalldataOrReason
-        ) = CommonReportTrigger(trigger).defaultStrategyReportTrigger(
-                _strategy
-            );
+        ) = CommonReportTrigger(trigger).strategyReportTrigger(_strategy);
 
         // If report should be called, call it with the recommended parameters.
         if (shouldReportStrategy) {
@@ -232,7 +227,7 @@ contract EverlongStrategyKeeper is Ownable {
     ) external view returns (bool shouldProcessReport_) {
         // Check if report should be called on the vault/strategy combination.
         (shouldProcessReport_, ) = CommonReportTrigger(trigger)
-            .defaultVaultReportTrigger(_vault, _strategy);
+            .vaultReportTrigger(_vault, _strategy);
     }
 
     /// @notice Returns whether `report(..)` should be called on the strategy.
@@ -244,7 +239,7 @@ contract EverlongStrategyKeeper is Ownable {
     ) external view returns (bool shouldStrategyReport_) {
         // Check if report should be called on the strategy.
         (shouldStrategyReport_, ) = CommonReportTrigger(trigger)
-            .defaultStrategyReportTrigger(_strategy);
+            .strategyReportTrigger(_strategy);
     }
 
     /// @notice Returns whether `tend(..)` should be called on the strategy.
