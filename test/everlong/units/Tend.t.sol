@@ -295,4 +295,41 @@ contract TestTend is EverlongTest {
         // Stop the prank.
         vm.stopPrank();
     }
+
+    /// @dev Tests that `TendConfig.extraData` is fully loaded even when the
+    ///      content is greater than a single storage slot.
+    function test_extraData_large() external {
+        // Start a prank as the keeper address.
+        vm.startPrank(address(keeperContract));
+
+        // Prepare a large `bytes` array for `extraData`.
+        bytes memory largeExtraData = new bytes(1024);
+        for (uint256 i = 0; i < 1024; i++) {
+            largeExtraData[i] = bytes1(uint8(i % 256));
+        }
+
+        // Call `setTendConfig` with the large `extraData`.
+        IEverlongStrategy(address(strategy)).setTendConfig(
+            IEverlongStrategy.TendConfig({
+                minOutput: 1,
+                minVaultSharePrice: 0,
+                positionClosureLimit: 0,
+                extraData: largeExtraData
+            })
+        );
+
+        // Retrieve the TendConfig.
+        (, IEverlongStrategy.TendConfig memory tendConfig) = IEverlongStrategy(
+            address(strategy)
+        ).getTendConfig();
+
+        // Assert that the retrieved `extraData` is the same as the input.
+        assertTrue(
+            keccak256(tendConfig.extraData) == keccak256(largeExtraData),
+            "Large bytes data mismatch!"
+        );
+
+        // Stop the prank.
+        vm.stopPrank();
+    }
 }
