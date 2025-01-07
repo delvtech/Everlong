@@ -232,6 +232,25 @@ abstract contract VaultTest is HyperdriveTest {
         vm.stopPrank();
     }
 
+    /// @dev Create all the role-based and arbitrary users used in testing.
+    ///      The `setUp` function from `HyperdriveTest` creates these for us,
+    ///      but if its overridden then this must be called.
+    function createTestUsers() internal {
+        // Create role-based users.
+        (deployer, ) = createUser("deployer");
+        (governance, ) = createUser("governance");
+        (keeper, ) = createUser("keeper");
+        (management, ) = createUser("management");
+        (emergencyAdmin, ) = createUser("emergencyAdmin");
+
+        // Create arbitrary test users.
+        (alice, alicePK) = createUser("alice");
+        (bob, bobPK) = createUser("bob");
+        (celine, celinePK) = createUser("celine");
+        (dan, danPK) = createUser("dan");
+        (eve, evePK) = createUser("eve");
+    }
+
     // ╭───────────────────────────────────────────────────────────────────────╮
     // │                            Deposit Helpers                            │
     // ╰───────────────────────────────────────────────────────────────────────╯

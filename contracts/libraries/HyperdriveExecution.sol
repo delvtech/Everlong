@@ -1432,4 +1432,25 @@ library HyperdriveExecutionLibrary {
         }
         return self.convertToShares(_baseAmount);
     }
+
+    /// @dev Gets the minimum amount of strategy assets needed to open a long
+    ///         with hyperdrive.
+    /// @param _poolConfig The hyperdrive PoolConfig.
+    /// @param _asBase Whether to transact in hyperdrive's base token or vault
+    ///                shares token.
+    /// @return amount Minimum amount of strategy assets needed to open a long
+    ///                with hyperdrive.
+    function _minimumTransactionAmount(
+        IHyperdrive self,
+        IHyperdrive.PoolConfig storage _poolConfig,
+        bool _asBase
+    ) public view returns (uint256 amount) {
+        amount = _poolConfig.minimumTransactionAmount;
+
+        // Since `amount` is denominated in hyperdrive's base token. We must
+        // convert it to the shares token if `_asBase` is set to false.
+        if (!_asBase) {
+            amount = _convertToShares(self, amount);
+        }
+    }
 }

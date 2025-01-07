@@ -55,8 +55,16 @@ contract TestTend is EverlongTest {
         uint256 shares;
         uint256 spent;
         for (uint256 i; i < maxPositionCount; i++) {
-            spent += MINIMUM_TRANSACTION_AMOUNT * 2;
-            shares += depositVault(MINIMUM_TRANSACTION_AMOUNT * 2, alice, true);
+            spent +=
+                IEverlongStrategy(address(strategy))
+                    .minimumTransactionAmount() *
+                2;
+            shares += depositVault(
+                IEverlongStrategy(address(strategy))
+                    .minimumTransactionAmount() * 2,
+                alice,
+                true
+            );
             advanceTimeWithCheckpointsAndReporting(CHECKPOINT_DURATION);
         }
 
@@ -114,10 +122,13 @@ contract TestTend is EverlongTest {
         // Mint some tokens to Everlong for opening longs.
         // Ensure Everlong's balance is gte Hyperdrive's minTransactionAmount.
         // Ensure `tendTrigger()` returns true.
-        depositStrategy(MINIMUM_TRANSACTION_AMOUNT + 1, alice);
+        depositStrategy(
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount() + 1,
+            alice
+        );
         assertGt(
             IERC20(strategy.asset()).balanceOf(address(strategy)),
-            MINIMUM_TRANSACTION_AMOUNT
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount()
         );
         (bool canTend, ) = strategy.tendTrigger();
         assertTrue(
@@ -130,7 +141,10 @@ contract TestTend is EverlongTest {
     ///      position.
     function test_tendTrigger_with_matured_position() external {
         // Mint some tokens to Everlong for opening longs and rebalance.
-        mintApproveAsset(address(strategy), MINIMUM_TRANSACTION_AMOUNT + 1);
+        mintApproveAsset(
+            address(strategy),
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount() + 1
+        );
         rebalance();
 
         // Increase block.timestamp until position is mature.
@@ -202,7 +216,10 @@ contract TestTend is EverlongTest {
     /// @dev Tests that `TendConfig.minOutput` is obeyed when opening longs.
     function test_minOutput_open_long() external {
         // Deposit into the strategy as alice.
-        depositStrategy(MINIMUM_TRANSACTION_AMOUNT + 1, alice);
+        depositStrategy(
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount() + 1,
+            alice
+        );
 
         // Start a prank as a keeper.
         vm.startPrank(keeper);
@@ -229,7 +246,10 @@ contract TestTend is EverlongTest {
     /// @dev Tests that `TendConfig.minVaultSharePrice` is obeyed when opening longs.
     function test_minVaultSharePrice_open_long() external {
         // Deposit into the strategy as alice.
-        depositStrategy(MINIMUM_TRANSACTION_AMOUNT + 1, alice);
+        depositStrategy(
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount() + 1,
+            alice
+        );
 
         // Start a prank as a keeper.
         vm.startPrank(keeper);
@@ -257,7 +277,10 @@ contract TestTend is EverlongTest {
     ///      tend().
     function test_positionClosureLimit_tend() external {
         // Deposit into the strategy as alice.
-        depositStrategy(MINIMUM_TRANSACTION_AMOUNT + 1, alice);
+        depositStrategy(
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount() + 1,
+            alice
+        );
 
         // Rebalance to have the strategy hold a single position.
         rebalance();
@@ -265,7 +288,10 @@ contract TestTend is EverlongTest {
         // Fast forward a checkpoint duration, deposit, and rebalance.
         // This will result in two total positions held by the strategy.
         advanceTimeWithCheckpoints(CHECKPOINT_DURATION);
-        depositStrategy(MINIMUM_TRANSACTION_AMOUNT + 1, alice);
+        depositStrategy(
+            IEverlongStrategy(address(strategy)).minimumTransactionAmount() + 1,
+            alice
+        );
         rebalance();
         assertEq(IEverlongStrategy(address(strategy)).positionCount(), 2);
 

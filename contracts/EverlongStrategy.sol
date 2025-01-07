@@ -8,7 +8,7 @@ import { SafeERC20 } from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import { BaseStrategy, ERC20 } from "tokenized-strategy/BaseStrategy.sol";
 import { IEverlongStrategy } from "./interfaces/IEverlongStrategy.sol";
 import { IERC20Wrappable } from "./interfaces/IERC20Wrappable.sol";
-import { EVERLONG_STRATEGY_KIND, EVERLONG_VERSION, ONE } from "./libraries/Constants.sol";
+import { EVERLONG_STRATEGY_KIND, EVERLONG_VERSION, MAX_BPS, ONE } from "./libraries/Constants.sol";
 import { EverlongPortfolioLibrary } from "./libraries/EverlongPortfolio.sol";
 import { HyperdriveExecutionLibrary } from "./libraries/HyperdriveExecution.sol";
 
@@ -102,6 +102,12 @@ contract EverlongStrategy is BaseStrategy {
     // ╭───────────────────────────────────────────────────────────────────────╮
     // │                       Constants and Immutables                        │
     // ╰───────────────────────────────────────────────────────────────────────╯
+
+    /// @notice Amount to add to hyperdrive's minimum transaction amount to
+    ///         account for hyperdrive's internal rounding. Represented as a
+    ///         percentage of the value after conversions from base to shares
+    ///         (if applicable) where 1e18 represents a 100% buffer.
+    uint256 public constant minimumTransactionAmountBuffer = 0.001e18;
 
     /// @notice Amount of additional bonds to close during a partial position
     ///         closure to avoid rounding errors. Represented as a percentage
@@ -330,7 +336,7 @@ contract EverlongStrategy is BaseStrategy {
         uint256 toSpend = _totalIdle.min(availableDepositLimit(address(this)));
 
         // If Everlong has sufficient idle, open a new position.
-        if (toSpend > _minimumTransactionAmount()) {
+        if (toSpend > minimumTransactionAmount()) {
             (uint256 maturityTime, uint256 bondAmount) = _openLong(
                 toSpend,
                 tendConfig.minOutput,
@@ -473,7 +479,7 @@ contract EverlongStrategy is BaseStrategy {
         uint256 _targetOutput
     ) internal returns (uint256 output) {
         // Round `_targetOutput` up to Hyperdrive's minimum transaction amount.
-        _targetOutput = _targetOutput.max(_minimumTransactionAmount());
+        _targetOutput = _targetOutput.max(minimumTransactionAmount());
 
         // Since multiple position's worth of bonds may need to be closed,
         // iterate through each position starting with the most mature.
@@ -502,7 +508,7 @@ contract EverlongStrategy is BaseStrategy {
             // Hyperdrive's minimum transaction amount.
             if (
                 totalPositionValue >
-                (_targetOutput - output + _minimumTransactionAmount()).mulUp(
+                (_targetOutput - output + minimumTransactionAmount()).mulUp(
                     ONE + partialPositionClosureBuffer
                 )
             ) {
@@ -682,22 +688,6 @@ contract EverlongStrategy is BaseStrategy {
         }
     }
 
-    /// @dev Retrieve hyperdrive's minimum transaction amount.
-    /// @return amount Hyperdrive's minimum transaction amount.
-    function _minimumTransactionAmount()
-        internal
-        view
-        returns (uint256 amount)
-    {
-        amount = _poolConfig.minimumTransactionAmount;
-
-        // Since `amount` is denominated in hyperdrive's base currency. We must
-        // convert it.
-        if (!asBase || isWrapped) {
-            IHyperdrive(hyperdrive)._convertToShares(amount);
-        }
-    }
-
     // ╭───────────────────────────────────────────────────────────────────────╮
     // │                                 Views                                 │
     // ╰───────────────────────────────────────────────────────────────────────╯
@@ -752,7 +742,7 @@ contract EverlongStrategy is BaseStrategy {
     /// @return True if a new position can be opened, false otherwise.
     function canOpenPosition() public view returns (bool) {
         uint256 currentBalance = asset.balanceOf(address(this));
-        return currentBalance > _minimumTransactionAmount();
+        return currentBalance > minimumTransactionAmount();
     }
 
     /// @notice Converts an amount denominated in wrapped tokens to an amount
@@ -791,6 +781,24 @@ contract EverlongStrategy is BaseStrategy {
         return
             !_portfolio.isEmpty() &&
             IHyperdrive(hyperdrive).isMature(_portfolio.head());
+    }
+
+    /// @notice Gets the minimum amount of strategy assets needed to open a long
+    ///         with hyperdrive.
+    /// @return amount Minimum amount of strategy assets needed to open a long
+    ///                with hyperdrive.
+    function minimumTransactionAmount() public view returns (uint256 amount) {
+        // Retrieve the minimum transaction amount from the poolConfig.
+        // This value is already converted to shares if `asBase==false`.
+        amount = IHyperdrive(hyperdrive)._minimumTransactionAmount(
+            _poolConfig,
+            asBase
+        );
+
+        // NOTE: Since some rounding occurs within hyperdrive when using its
+        //       shares token, we choose to be safe and add a buffer to ensure
+        //       that the amount will be above hyperdrive's minimum.
+        amount = amount.mulUp(ONE + minimumTransactionAmountBuffer);
     }
 
     /// @notice Retrieve the position at the specified location in the queue.

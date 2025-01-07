@@ -118,6 +118,18 @@ interface IEverlongStrategy is IPermissionedStrategy, IEverlongEvents {
     /// @return The Everlong instance's kind.
     function kind() external pure returns (string memory);
 
+    /// @notice Gets the minimum amount of strategy assets needed to open a long
+    ///         with hyperdrive.
+    /// @return Minimum amount of strategy assets needed to open a long with
+    ///         hyperdrive.
+    function minimumTransactionAmount() external view returns (uint256);
+
+    /// @notice Amount to add to hyperdrive's minimum transaction amount to
+    ///         account for hyperdrive's internal rounding. Represented as a
+    ///         percentage of the value after conversions from base to shares
+    ///         (if applicable) where 1e18 represents a 100% buffer.
+    function minimumTransactionAmountBuffer() external view returns (uint256);
+
     /// @notice Amount of additional bonds to close during a partial position
     ///         closure to avoid rounding errors. Represented as a percentage
     ///         of the positions total  amount of bonds where 1e18 represents
