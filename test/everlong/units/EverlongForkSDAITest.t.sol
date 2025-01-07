@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import { console2 as console } from "forge-std/console2.sol";
 import { IERC20, IHyperdrive } from "hyperdrive/contracts/src/interfaces/IHyperdrive.sol";
 import { ILido } from "hyperdrive/contracts/src/interfaces/ILido.sol";
+import { FixedPointMath } from "hyperdrive/contracts/src/libraries/FixedPointMath.sol";
 import { IEverlongStrategy } from "../../../contracts/interfaces/IEverlongStrategy.sol";
 import { EVERLONG_STRATEGY_KIND, EVERLONG_VERSION } from "../../../contracts/libraries/Constants.sol";
 import { EverlongForkSDAITest } from "../EverlongForkSDAITest.sol";
@@ -11,6 +12,8 @@ import { EverlongForkSDAITest } from "../EverlongForkSDAITest.sol";
 /// @dev Tests Everlong functionality when using the existing SDAIHyperdrive
 ///      instance on a fork.
 contract TestEverlongForkSDAI is EverlongForkSDAITest {
+    using FixedPointMath for uint256;
+
     /// @dev Ensure the deposit functions work as expected.
     function test_deposit() external {
         // Alice and Bob deposit into the vault.
@@ -71,5 +74,33 @@ contract TestEverlongForkSDAI is EverlongForkSDAITest {
         // Ensure the maturityTime and bondAmount are valid.
         assertGt(maturityTime, 0);
         assertGt(bondAmount, 0);
+    }
+
+    /// @dev Tests that when a partial closure would result in a remaining
+    ///      position value less than the minimum transaction amount, the entire
+    ///      position is closed.
+    function test_partial_closures_min_transaction_amount() external {
+        // Alice deposits into Everlong.
+        uint256 aliceDepositAmount = 10e18;
+        uint256 aliceShares = depositSDAIStrategy(aliceDepositAmount, alice);
+        rebalance();
+
+        // Ensure there is now one position.
+        assertEq(IEverlongStrategy(address(strategy)).positionCount(), 1);
+
+        // Calculate how many shares are neeed to reach the minimum transaction
+        // amount.
+        uint256 minTxShareAmount = (aliceShares).mulDivDown(
+            hyperdrive.getPoolConfig().minimumTransactionAmount,
+            IEverlongStrategy(address(strategy)).positionAt(0).bondAmount
+        );
+
+        // Redeem shares such that the remaining share value should be less
+        // than the minimum transaction amount.
+        redeemSDAIStrategy(aliceShares - minTxShareAmount, alice);
+        rebalance();
+
+        // There should be no positions left.
+        assertEq(IEverlongStrategy(address(strategy)).positionCount(), 0);
     }
 }

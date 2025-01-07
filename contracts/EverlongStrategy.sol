@@ -502,27 +502,46 @@ contract EverlongStrategy is BaseStrategy {
                 ""
             );
 
+            // No conversions are needed for hyperdrive's minimum transaction
+            // amount when closing longs since it's denominated in bonds.
+            uint256 minimumBonds = _poolConfig.minimumTransactionAmount;
+
+            // Calculate how many bonds out of the position need to be closed.
+            uint256 bondsNeeded;
+            if (totalPositionValue <= _targetOutput - output) {
+                // We need the entire position's bonds.
+                // We can always assume it's at least the minimum transaction
+                // amount.
+                bondsNeeded = uint256(position.bondAmount);
+            } else {
+                // `bondsNeeded <= position.bondAmount` since
+                // `_targetOutput - output < totalPositionValue`.
+                bondsNeeded = uint256(position.bondAmount).mulDivUp(
+                    (_targetOutput - output),
+                    totalPositionValue
+                );
+
+                // We need to close at least the `minimumTransactionAmount`
+                // value of bonds. It's safe to assume that the position
+                // has at least that much.
+                bondsNeeded = bondsNeeded.max(minimumBonds);
+
+                // If closing bondsNeeded would leave a position with less than
+                // `minimumTransactionAmount`, close the entire position
+                // instead.
+                if (position.bondAmount - bondsNeeded < minimumBonds) {
+                    bondsNeeded = position.bondAmount;
+                }
+            }
+
             // Close only part of the position if there are sufficient bonds
             // to reach the target output without leaving a small amount left.
             // For this case, the remaining bonds must be worth at least
             // Hyperdrive's minimum transaction amount.
-            if (
-                totalPositionValue >
-                (_targetOutput - output + minimumTransactionAmount()).mulUp(
-                    ONE + partialPositionClosureBuffer
-                )
-            ) {
-                // Calculate the amount of bonds to close from the position.
-                uint256 bondsNeeded = uint256(position.bondAmount).mulDivUp(
-                    (_targetOutput - output).mulUp(
-                        ONE + partialPositionClosureBuffer
-                    ),
-                    totalPositionValue
-                );
-
+            if (bondsNeeded < position.bondAmount) {
                 // Close part of the position.
                 //
-                // Since this functino would never be called as part of a
+                // Since this function would never be called as part of a
                 // `tend()`, there's no need to retrieve the `TendConfig` and
                 // set the slippage guard.
                 //
@@ -541,9 +560,7 @@ contract EverlongStrategy is BaseStrategy {
 
                 // No more closures are needed.
                 return output;
-            }
-            // Close the entire position.
-            else {
+            } else {
                 // Close the entire position.
                 //
                 // Since this function would never be called as part of a

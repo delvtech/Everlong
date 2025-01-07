@@ -57,6 +57,29 @@ contract EverlongForkSDAITest is EverlongTest {
         vm.stopPrank();
     }
 
+    /// @dev Deposit into the SDAI everlong strategy.
+    /// @param _assets Amount of assets to deposit.
+    /// @param _from Source of the tokens.
+    /// @return shares Amount of shares received from the deposit.
+    function depositSDAIStrategy(
+        uint256 _assets,
+        address _from
+    ) internal returns (uint256 shares) {
+        // Mint _from some SDAI.
+        mintSDAI(_assets, _from);
+
+        // Enable deposits from _from.
+        vm.startPrank(management);
+        strategy.setDepositor(_from, true);
+        vm.stopPrank();
+
+        // Make the approval and deposit.
+        vm.startPrank(_from);
+        asset.approve(address(strategy), _assets);
+        shares = strategy.deposit(_assets, _from);
+        vm.stopPrank();
+    }
+
     /// @dev Redeem shares from the SDAI everlong vault.
     /// @param _shares Amount of shares to redeem.
     /// @param _from Source of the shares.
@@ -67,6 +90,19 @@ contract EverlongForkSDAITest is EverlongTest {
     ) internal returns (uint256 assets) {
         vm.startPrank(_from);
         assets = vault.redeem(_shares, _from, _from);
+        vm.stopPrank();
+    }
+
+    /// @dev Redeem shares from the SDAI everlong strategy.
+    /// @param _shares Amount of shares to redeem.
+    /// @param _from Source of the shares.
+    /// @return assets Amount of assets received from the redemption.
+    function redeemSDAIStrategy(
+        uint256 _shares,
+        address _from
+    ) internal returns (uint256 assets) {
+        vm.startPrank(_from);
+        assets = strategy.redeem(_shares, _from, _from);
         vm.stopPrank();
     }
 }
