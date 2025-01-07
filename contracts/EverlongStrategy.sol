@@ -2,6 +2,8 @@
 pragma solidity 0.8.24;
 
 import { IHyperdrive } from "hyperdrive/contracts/src/interfaces/IHyperdrive.sol";
+import { IMultiToken } from "hyperdrive/contracts/src/interfaces/IMultiToken.sol";
+import { AssetId } from "hyperdrive/contracts/src/libraries/AssetId.sol";
 import { FixedPointMath } from "hyperdrive/contracts/src/libraries/FixedPointMath.sol";
 import { SafeCast } from "hyperdrive/contracts/src/libraries/SafeCast.sol";
 import { SafeERC20 } from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
@@ -217,6 +219,43 @@ contract EverlongStrategy is BaseStrategy {
         // Opening longs on Hyperdrive is sandwichable so funds should only be
         // deployed when the `keeper` calls `tend()`.
         return;
+    }
+
+    /// @dev Withdraw function that can be called after the vault is shut down.
+    ///      Transfers bond positions to the `emergencyAdmin` address until
+    ///      a position's transfer would exceed `_maxBondAmount` or there are
+    ///      no longer any bond positions under the strategy's control.
+    /// @param _maxBondAmount Maximum amount of bonds to transfer from positions.
+    function _emergencyWithdraw(uint256 _maxBondAmount) internal override {
+        IEverlongStrategy.EverlongPosition memory position;
+        while (!_portfolio.isEmpty()) {
+            // Retrieve the most mature position.
+            position = _portfolio.head();
+
+            // If transferring the position's bonds would cause the total amount
+            // transferred to exceed `_maxBondAmount` then exit.
+            if (position.bondAmount > _maxBondAmount) {
+                return;
+            }
+            // Deduct the position's bonds from `_maxBondAmount` so that it
+            // tracks how many more bonds can be transferred before hitting the
+            // limit.
+            else {
+                _maxBondAmount -= position.bondAmount;
+            }
+
+            // Transfer the tokens to the management address.
+            IMultiToken(hyperdrive).transferFrom(
+                AssetId.encodeAssetId(
+                    AssetId.AssetIdPrefix.Long,
+                    uint256(position.maturityTime)
+                ),
+                address(this),
+                TokenizedStrategy.emergencyAdmin(),
+                uint256(position.bondAmount)
+            );
+            _portfolio.handleClosePosition();
+        }
     }
 
     /// @dev Attempt to free the '_amount' of 'asset'.
